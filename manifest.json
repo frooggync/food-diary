@@ -1,0 +1,18 @@
+{
+  "name": "Food Diary",
+  "short_name": "Food Diary",
+  "description": "Track what you ate, where you ate it, and how much you liked it",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#faf7f2",
+  "theme_color": "#e07b39",
+  "icons": [
+    {
+      "src": "https://v3b.fal.media/files/b/0aa26b5f/-af-6Aiqh8y8iB1LXHNOk_7iHq3PZm.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

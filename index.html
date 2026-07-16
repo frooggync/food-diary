@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Food Diary</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#e07b39">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Food Diary">
+<link rel="apple-touch-icon" href="https://v3b.fal.media/files/b/0aa26b5f/-af-6Aiqh8y8iB1LXHNOk_7iHq3PZm.png">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root {
+    --bg: #faf7f2; --card: #ffffff; --text: #2c2416; --text-muted: #8b7355;
+    --accent: #e07b39; --accent-hover: #c5692e; --border: #e8dccf;
+    --star: #f4b740; --star-empty: #ddd2c2; --danger: #d9534f;
+    --danger-hover: #c9302c; --shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --radius: 12px; --green: #2ecc71;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6;
+  }
+  .container { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  header { text-align: center; padding: 32px 0 24px; }
+  header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  header h1 span { font-size: 2.2rem; }
+  header p { color: var(--text-muted); margin-top: 4px; font-size: 0.95rem; }
+
+  /* Auth bar */
+  .auth-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 16px; margin-bottom: 16px; box-shadow: var(--shadow);
+    flex-wrap: wrap; gap: 10px;
+  }
+  .auth-status { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+  .auth-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+  .auth-status .dot.connected { background: var(--green); }
+  .auth-status .user-avatar { width: 28px; height: 28px; border-radius: 50%; }
+  .google-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; background: #fff; border: 1px solid #dadce0;
+    border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500;
+    color: #3c4043; white-space: nowrap;
+    transition: box-shadow 0.15s;
+  }
+  .google-btn:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+  .google-btn img { width: 18px; height: 18px; }
+
+  /* Setup banner */
+  .setup-banner {
+    background: #fff8e1; border: 1px solid #ffe082; border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 16px; font-size: 0.9rem;
+  }
+  .setup-banner h3 { margin-bottom: 6px; }
+  .setup-banner code { background: #f5f0e6; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+  .setup-banner ol { margin: 8px 0 0 18px; }
+  .setup-banner ol li { margin-bottom: 4px; }
+
+  /* Stats bar */
+  .stats-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .stat-card {
+    flex: 1; min-width: 100px; background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px; text-align: center; box-shadow: var(--shadow);
+  }
+  .stat-card .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+  .stat-card .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow);
+  }
+  .card-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  .form-row { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .form-group { flex: 1; min-width: 140px; display: flex; flex-direction: column; }
+  .form-group label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); margin-bottom: 4px; }
+  .form-group input, .form-group textarea, .form-group select {
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 0.95rem; font-family: inherit; background: var(--bg); color: var(--text); transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(224,123,57,0.12);
+  }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+
+  .rating-group { flex: 1.5; min-width: 200px; }
+  .rating-display { display: flex; align-items: center; gap: 10px; }
+  .rating-display input[type="range"] { flex: 1; accent-color: var(--accent); height: 6px; }
+  .rating-badge { font-size: 1.6rem; font-weight: 800; color: var(--accent); min-width: 32px; text-align: center; }
+  .rating-stars { display: flex; gap: 2px; margin-top: 4px; font-size: 1.1rem; color: var(--star); }
+
+  .btn {
+    padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem;
+    font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+  .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .filter-bar select {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 0.9rem; font-family: inherit; background: var(--card); color: var(--text); cursor: pointer;
+  }
+  .filter-bar select:focus { outline: none; border-color: var(--accent); }
+
+  .entry-list { display: flex; flex-direction: column; gap: 12px; }
+  .entry-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; box-shadow: var(--shadow); position: relative;
+  }
+  .entry-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .entry-restaurant { font-weight: 700; font-size: 1.05rem; }
+  .entry-date { font-size: 0.78rem; color: var(--text-muted); }
+  .entry-food { margin-top: 6px; color: var(--text); font-size: 0.95rem; }
+  .entry-rating { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .entry-rating .stars { font-size: 1.05rem; color: var(--star); letter-spacing: 1px; }
+  .entry-rating .score { font-weight: 700; font-size: 1.15rem; color: var(--accent); }
+  .entry-notes { margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+  .entry-actions { display: flex; gap: 6px; position: absolute; top: 14px; right: 16px; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 1.1rem; color: var(--text); margin-bottom: 6px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* Photo section */
+  .photo-section { margin-bottom: 14px; }
+  .photo-section > label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); margin-bottom: 8px; display: block; }
+  .photo-controls { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .camera-btn, .upload-label {
+    padding: 10px 16px; background: var(--bg); border: 2px dashed var(--border);
+    border-radius: var(--radius); cursor: pointer; font-size: 0.9rem; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+  }
+  .camera-btn:hover, .upload-label:hover { border-color: var(--accent); color: var(--accent); background: #fff; }
+  .camera-btn.active-cam { border-color: var(--danger); color: var(--danger); background: #fff5f5; }
+  .upload-label input[type="file"] { display: none; }
+
+  .camera-viewfinder {
+    display: none; position: relative; width: 100%; max-width: 400px;
+    border-radius: var(--radius); overflow: hidden; margin-bottom: 10px;
+    border: 2px solid var(--border); background: #000;
+  }
+  .camera-viewfinder.active { display: block; }
+  .camera-viewfinder video { width: 100%; display: block; border-radius: calc(var(--radius) - 2px); }
+  .camera-viewfinder .capture-btn {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    width: 52px; height: 52px; border-radius: 50%; background: #fff;
+    border: 3px solid var(--accent); cursor: pointer; font-size: 1.3rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3); transition: transform 0.1s;
+  }
+  .camera-viewfinder .capture-btn:active { transform: translateX(-50%) scale(0.9); }
+
+  .photo-previews { display: flex; gap: 8px; flex-wrap: wrap; }
+  .photo-preview-item { position: relative; width: 90px; height: 90px; border-radius: 8px; overflow: hidden; border: 2px solid var(--border); }
+  .photo-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-preview-item .remove-photo {
+    position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(0,0,0,0.6); color: #fff; border: none; cursor: pointer;
+    font-size: 0.7rem; display: flex; align-items: center; justify-content: center;
+  }
+  .photo-preview-item .remove-photo:hover { background: var(--danger); }
+  .photo-preview-item .uploading-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.7rem;
+  }
+
+  .entry-photos { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .entry-photos .photo-thumb { width: 100px; height: 100px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; transition: transform 0.15s; }
+  .entry-photos .photo-thumb:hover { transform: scale(1.05); }
+  .entry-photos .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .lightbox {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 200; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .lightbox.active { display: flex; }
+  .lightbox img { max-width: 92vw; max-height: 92vh; border-radius: 8px; box-shadow: 0 4px 30px rgba(0,0,0,0.5); }
+
+  /* Sync indicator */
+  .syncing { opacity: 0.6; pointer-events: none; }
+  .sync-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--text-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff; padding: 10px 24px; border-radius: 8px;
+    font-size: 0.85rem; z-index: 300; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 480px) {
+    .container { padding: 12px 10px 40px; }
+    .form-row { flex-direction: column; }
+    .stats-bar { flex-direction: column; }
+    .entry-actions { position: static; margin-top: 8px; }
+    .auth-bar { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1><span>🍽️</span> Food Diary</h1>
+    <p>Track what you ate, where you ate it, and how much you liked it</p>
+  </header>
+
+  <!-- Auth bar -->
+  <div class="auth-bar">
+    <div class="auth-status" id="authStatus">
+      <span class="dot" id="authDot"></span>
+      <span id="authText">Not connected to Google Drive</span>
+    </div>
+    <button class="google-btn" id="googleSignInBtn" onclick="handleAuthClick()">
+      <img src="https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/googleg_color_18dp.png" alt="">
+      Sign in with Google
+    </button>
+  </div>
+
+  <!-- Setup instructions (hidden once configured) -->
+  <div class="setup-banner" id="setupBanner">
+    <h3>🔧 One-time setup</h3>
+    <p>Create a Google Cloud OAuth client ID to enable Google Drive sync:</p>
+    <ol>
+      <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console → Credentials</a></li>
+      <li>Create a project, then <b>Create Credentials → OAuth client ID</b></li>
+      <li>Choose <b>Web application</b></li>
+      <li>Add <code id="originDisplay"></code> to <b>Authorized JavaScript origins</b></li>
+      <li>Paste your <b>Client ID</b> below:</li>
+    </ol>
+    <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
+      <input type="text" id="clientIdInput" placeholder="YOUR_CLIENT_ID.apps.googleusercontent.com" style="flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem;">
+      <button class="btn btn-primary" onclick="saveClientId()">💾 Save</button>
+    </div>
+    <p style="margin-top:8px; font-size:0.8rem; color:var(--text-muted);">
+      Also enable the <b>Google Drive API</b> in <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank">API Library</a>.
+    </p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar" id="statsBar"></div>
+
+  <!-- Add / Edit Form -->
+  <div class="card" id="formCard">
+    <div class="card-title" id="formTitle">📝 Add New Entry</div>
+    <form id="entryForm" autocomplete="off">
+      <input type="hidden" id="editId" value="">
+      <div class="form-row">
+        <div class="form-group" style="flex:2; min-width:200px;">
+          <label for="restaurant">🍴 Restaurant</label>
+          <input type="text" id="restaurant" placeholder="e.g. Joe's Pizza" list="restaurantList" required>
+          <datalist id="restaurantList"></datalist>
+        </div>
+        <div class="form-group">
+          <label for="date">📅 Date</label>
+          <input type="date" id="date" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2; min-width:200px;">
+          <label for="food">🍔 What did you order?</label>
+          <input type="text" id="food" placeholder="e.g. Margherita pizza, garlic knots" required>
+        </div>
+        <div class="form-group rating-group">
+          <label>⭐ Rating <span>(1-10)</span></label>
+          <div class="rating-display">
+            <input type="range" id="rating" min="1" max="10" value="7" step="1">
+            <span class="rating-badge" id="ratingBadge">7</span>
+          </div>
+          <div class="rating-stars" id="ratingStars"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:3;">
+          <label for="notes">📝 Notes (optional)</label>
+          <textarea id="notes" placeholder="Service, atmosphere, value, would you go back?"></textarea>
+        </div>
+      </div>
+
+      <!-- Photo section -->
+      <div class="photo-section">
+        <label>📸 Photos (up to 3)</label>
+        <div class="photo-controls">
+          <button type="button" class="camera-btn" id="cameraBtn" title="Take a photo with your camera">📷 Take Photo</button>
+          <label class="upload-label" title="Upload photos from your device">
+            🖼️ Upload
+            <input type="file" id="photoUpload" accept="image/*" multiple>
+          </label>
+        </div>
+        <div class="camera-viewfinder" id="viewfinder">
+          <video id="cameraVideo" autoplay playsinline></video>
+          <button type="button" class="capture-btn" id="captureBtn" title="Snap photo">📸</button>
+        </div>
+        <div class="photo-previews" id="photoPreviews"></div>
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary" id="submitBtn" disabled>🔒 Sign in to save</button>
+        <button type="button" class="btn btn-outline" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Filter + Entries -->
+  <div class="filter-bar">
+    <label style="font-weight:600; font-size:0.85rem;">Filter:</label>
+    <select id="filterRestaurant">
+      <option value="">🏪 All Restaurants</option>
+    </select>
+    <select id="sortBy">
+      <option value="newest">🕐 Newest First</option>
+      <option value="oldest">🕐 Oldest First</option>
+      <option value="highest">⭐ Highest Rated</option>
+      <option value="lowest">⭐ Lowest Rated</option>
+    </select>
+    <span style="margin-left:auto; font-size:0.8rem; color:var(--text-muted);" id="entryCount"></span>
+  </div>
+
+  <!-- Sync status -->
+  <div id="syncStatus" style="text-align:center; padding:8px; font-size:0.8rem; color:var(--text-muted);"></div>
+
+  <div class="entry-list" id="entryList"></div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" alt="Food photo" />
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Google API loader -->
+<script src="https://apis.google.com/js/api.js"></script>
+
+<script>
+// ── Config ─────────────────────────────────────────────────
+const APP_FOLDER_NAME = 'Food Diary';
+const ENTRIES_FILE = 'food-diary-entries.json';
+let CLIENT_ID = '1057414034519-ns3ftctlvoi722hfg4f5fv89g51jpqtb.apps.googleusercontent.com';
+let API_KEY = ''; // Not needed for Drive file scope
+
+let accessToken = null;
+let tokenExpiry = 0;
+let appFolderId = null;
+let entriesFileId = null;
+let entries = [];
+let isSyncing = false;
+
+// ── Google Auth ────────────────────────────────────────────
+function initGoogleAuth() {
+  if (!CLIENT_ID) return;
+  // Initialize GSI
+  if (window.google && google.accounts) {
+    google.accounts.id.initialize({
+      client_id: CLIENT_ID,
+      callback: handleCredentialResponse,
+      auto_select: false,
+    });
+    // Try silent sign-in
+    google.accounts.id.prompt(notification => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        console.log('Silent sign-in not available');
+      }
+    });
+  }
+  // Load gapi for Drive
+  if (window.gapi) {
+    gapi.load('client', initGapiClient);
+  }
+}
+
+function initGapiClient() {
+  // We use raw fetch + token, not gapi.client (simpler)
+}
+
+function handleCredentialResponse(response) {
+  accessToken = response.credential; // This is an ID token, not access token
+  // For Drive API we need an access token; use the OAuth 2.0 token endpoint
+  // Actually, GSI returns ID token. We need to use the older auth flow for access tokens.
+  // Let's switch to the gapi.auth2 approach or use token client.
+  showToast('Sign-in requires the popup flow. Click the button again.');
+  // Fall through to handleAuthClick which uses the token client
+}
+
+async function handleAuthClick() {
+  if (!CLIENT_ID) {
+    showToast('Enter your Google Client ID first');
+    document.getElementById('clientIdInput').focus();
+    return;
+  }
+
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: async (tokenResponse) => {
+      if (tokenResponse.error) {
+        showToast('Auth failed: ' + tokenResponse.error);
+        return;
+      }
+      accessToken = tokenResponse.access_token;
+      tokenExpiry = Date.now() + (tokenResponse.expires_in || 3600) * 1000;
+      updateAuthUI();
+      await initDriveFolder();
+      await loadFromDrive();
+      renderAll();
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('submitBtn').textContent = '💾 Save Entry';
+      document.getElementById('setupBanner').style.display = 'none';
+    },
+  });
+
+  tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function signOut() {
+  accessToken = null;
+  tokenExpiry = 0;
+  appFolderId = null;
+  entriesFileId = null;
+  entries = [];
+  updateAuthUI();
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('submitBtn').textContent = '🔒 Sign in to save';
+  document.getElementById('setupBanner').style.display = 'block';
+  if (google && google.accounts && google.accounts.id) {
+    google.accounts.id.disableAutoSelect();
+  }
+  renderAll();
+  showToast('Signed out');
+}
+
+function updateAuthUI() {
+  const dot = document.getElementById('authDot');
+  const text = document.getElementById('authText');
+  const btn = document.getElementById('googleSignInBtn');
+
+  if (accessToken) {
+    dot.className = 'dot connected';
+    text.textContent = 'Connected to Google Drive';
+    btn.innerHTML = '<img src="https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/googleg_color_18dp.png" alt=""> Sign Out';
+    btn.onclick = signOut;
+  } else {
+    dot.className = 'dot';
+    text.textContent = 'Not connected to Google Drive';
+    btn.innerHTML = '<img src="https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/googleg_color_18dp.png" alt=""> Sign in with Google';
+    btn.onclick = handleAuthClick;
+  }
+}
+
+// ── Google Drive API ───────────────────────────────────────
+async function ensureToken() {
+  if (!accessToken || Date.now() > tokenExpiry - 60000) {
+    showToast('Session expired. Please sign in again.');
+    signOut();
+    throw new Error('Not authenticated');
+  }
+  return accessToken;
+}
+
+async function driveRequest(method, url, body = null) {
+  const token = await ensureToken();
+  const headers = { 'Authorization': `Bearer ${token}` };
+  const opts = { method, headers };
+  if (body) {
+    if (body instanceof FormData) {
+      opts.body = body;
+    } else {
+      headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+  }
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.text();
+    if (res.status === 401) { signOut(); throw new Error('Session expired'); }
+    throw new Error(`Drive API error ${res.status}: ${err}`);
+  }
+  return res.json();
+}
+
+async function initDriveFolder() {
+  // Find or create "Food Diary" folder
+  const q = encodeURIComponent(`name='${APP_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const searchRes = await driveRequest('GET', `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+
+  if (searchRes.files && searchRes.files.length > 0) {
+    appFolderId = searchRes.files[0].id;
+  } else {
+    const createRes = await driveRequest('POST', 'https://www.googleapis.com/drive/v3/files', {
+      name: APP_FOLDER_NAME,
+      mimeType: 'application/vnd.google-apps.folder',
+    });
+    appFolderId = createRes.id;
+  }
+
+  // Find entries JSON
+  const eq = encodeURIComponent(`name='${ENTRIES_FILE}' and '${appFolderId}' in parents and trashed=false`);
+  const es = await driveRequest('GET', `https://www.googleapis.com/drive/v3/files?q=${eq}&fields=files(id,name)`);
+  if (es.files && es.files.length > 0) {
+    entriesFileId = es.files[0].id;
+  }
+}
+
+async function loadFromDrive() {
+  if (!appFolderId) await initDriveFolder();
+  if (!entriesFileId) { entries = []; renderAll(); return; }
+
+  try {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${entriesFileId}?alt=media`, {
+      headers: { 'Authorization': `Bearer ${await ensureToken()}` }
+    });
+    if (!res.ok) throw new Error('Failed to load');
+    entries = await res.json();
+    // Ensure photos exist (backward compat)
+    entries.forEach(e => { if (!e.photos) e.photos = []; });
+  } catch (err) {
+    console.error('Load error:', err);
+    entries = [];
+  }
+}
+
+async function saveToDrive() {
+  if (!appFolderId) await initDriveFolder();
+  isSyncing = true;
+  document.getElementById('syncStatus').innerHTML = '<span class="sync-spinner"></span> Syncing...';
+
+  try {
+    const jsonStr = JSON.stringify(entries);
+
+    if (entriesFileId) {
+      // Update existing file
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${entriesFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${await ensureToken()}`,
+          'Content-Type': 'application/json',
+        },
+        body: jsonStr,
+      });
+    } else {
+      // Create new file
+      const metadata = {
+        name: ENTRIES_FILE,
+        mimeType: 'application/json',
+        parents: [appFolderId],
+      };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([jsonStr], { type: 'application/json' }));
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${await ensureToken()}` },
+        body: form,
+      });
+      const data = await res.json();
+      entriesFileId = data.id;
+    }
+
+    document.getElementById('syncStatus').textContent = '✅ Synced';
+    setTimeout(() => { document.getElementById('syncStatus').textContent = ''; }, 2000);
+  } catch (err) {
+    console.error('Save error:', err);
+    document.getElementById('syncStatus').textContent = '⚠️ Sync failed';
+    showToast('Failed to sync to Google Drive');
+  } finally {
+    isSyncing = false;
+  }
+}
+
+// ── Photo upload to Drive ──────────────────────────────────
+async function uploadPhotoToDrive(base64Data, entryId, index) {
+  // Convert base64 to blob
+  const byteString = atob(base64Data.split(',')[1]);
+  const mimeString = base64Data.split(',')[0].split(':')[1].split(';')[0];
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  const blob = new Blob([ab], { type: mimeString });
+
+  const metadata = {
+    name: `photo_${entryId}_${index}.jpg`,
+    mimeType: mimeString,
+    parents: [appFolderId],
+  };
+
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', blob);
+
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webContentLink,thumbnailLink', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${await ensureToken()}` },
+    body: form,
+  });
+  const data = await res.json();
+
+  return {
+    fileId: data.id,
+    thumbnailLink: data.thumbnailLink || '',
+    webContentLink: data.webContentLink || '',
+  };
+}
+
+async function deletePhotoFromDrive(fileId) {
+  try {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${await ensureToken()}` },
+    });
+  } catch (e) { console.warn('Failed to delete photo:', e); }
+}
+
+async function getPhotoUrl(fileId) {
+  // Returns a direct image URL for a Drive file
+  return `https://lh3.googleusercontent.com/d/${fileId}=s800`;
+}
+
+// ── Data Layer ─────────────────────────────────────────────
+let pendingPhotos = [];    // { dataUrl: string, uploading: bool, driveRef: null|{fileId, thumbnailLink} }
+let cameraStream = null;
+
+function compressImage(dataUrl, maxW = 800, quality = 0.7) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxW) { h = h * (maxW / w); w = maxW; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+async function addPhoto(dataUrl) {
+  if (pendingPhotos.length >= 3) { alert('Maximum 3 photos per entry.'); return; }
+  const compressed = await compressImage(dataUrl);
+  pendingPhotos.push({ dataUrl: compressed, uploading: false, driveRef: null });
+  renderPhotoPreviews();
+}
+
+function removePhoto(index) {
+  pendingPhotos.splice(index, 1);
+  renderPhotoPreviews();
+}
+
+function renderPhotoPreviews() {
+  const container = document.getElementById('photoPreviews');
+  container.innerHTML = pendingPhotos.map((p, i) => `
+    <div class="photo-preview-item">
+      <img src="${p.dataUrl}" alt="Food photo ${i+1}">
+      ${p.uploading ? '<div class="uploading-overlay">⬆️</div>' : ''}
+      <button type="button" class="remove-photo" onclick="removePhoto(${i})" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+function clearPhotos() {
+  pendingPhotos = [];
+  stopCamera();
+  document.getElementById('photoPreviews').innerHTML = '';
+}
+
+// Camera
+async function toggleCamera() {
+  const btn = document.getElementById('cameraBtn');
+  const vf = document.getElementById('viewfinder');
+  if (cameraStream) { stopCamera(); return; }
+  if (pendingPhotos.length >= 3) { alert('Maximum 3 photos per entry.'); return; }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    const video = document.getElementById('cameraVideo');
+    video.srcObject = cameraStream;
+    await video.play();
+    vf.classList.add('active');
+    btn.classList.add('active-cam');
+    btn.innerHTML = '⏹️ Stop Camera';
+  } catch (err) {
+    alert('Could not access camera: ' + err.message + '\n\nTry uploading photos instead.');
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('viewfinder').classList.remove('active');
+  const btn = document.getElementById('cameraBtn');
+  btn.classList.remove('active-cam');
+  btn.innerHTML = '📷 Take Photo';
+}
+
+async function capturePhoto() {
+  if (!cameraStream) return;
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  await addPhoto(canvas.toDataURL('image/jpeg', 0.85));
+  stopCamera();
+}
+
+function handleFileUpload(files) {
+  const remaining = 3 - pendingPhotos.length;
+  if (remaining <= 0) { alert('Maximum 3 photos per entry.'); return; }
+  Array.from(files).slice(0, remaining).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = async (e) => await addPhoto(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Lightbox
+function openLightbox(src) {
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+// Toast
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── UI Helpers ──────────────────────────────────────────────
+function ratingToStars(rating) {
+  const full = Math.floor(rating / 2);
+  const half = rating % 2 === 1 ? 1 : 0;
+  let stars = '★'.repeat(full);
+  if (half) stars += '½';
+  if (stars.length < 5) stars += '☆'.repeat(5 - full - half);
+  return stars;
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ── Render ──────────────────────────────────────────────────
+function renderAll() {
+  renderStats();
+  renderForm();
+  renderFilter();
+  renderEntries();
+}
+
+function renderStats() {
+  const total = entries.length;
+  const avgRating = total > 0 ? (entries.reduce((s, e) => s + e.rating, 0) / total).toFixed(1) : '—';
+  const restaurants = [...new Set(entries.map(e => e.restaurant.trim()))].filter(Boolean);
+
+  let topRest = '—';
+  if (total > 0) {
+    const byRest = {};
+    entries.forEach(e => {
+      const r = e.restaurant.trim();
+      if (!r) return;
+      if (!byRest[r]) byRest[r] = { total: 0, count: 0 };
+      byRest[r].total += e.rating;
+      byRest[r].count += 1;
+    });
+    let best = null;
+    for (const [name, data] of Object.entries(byRest)) {
+      const avg = data.total / data.count;
+      if (!best || avg > best.avg) best = { name, avg };
+    }
+    if (best) topRest = `${best.name} (${best.avg.toFixed(1)})`;
+  }
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Entries</div></div>
+    <div class="stat-card"><div class="stat-value">${avgRating}</div><div class="stat-label">Avg Rating</div></div>
+    <div class="stat-card"><div class="stat-value">${restaurants.length}</div><div class="stat-label">Restaurants</div></div>
+    ${total > 0 ? `<div class="stat-card"><div class="stat-value">⭐${topRest}</div><div class="stat-label">Top Rated</div></div>` : ''}
+  `;
+}
+
+function renderForm(reset = false) {
+  if (reset) {
+    document.getElementById('editId').value = '';
+    document.getElementById('entryForm').reset();
+    document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('rating').value = 7;
+    document.getElementById('submitBtn').textContent = accessToken ? '💾 Save Entry' : '🔒 Sign in to save';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('formTitle').textContent = '📝 Add New Entry';
+    clearPhotos();
+  }
+  updateRatingUI();
+  const restaurantNames = [...new Set(entries.map(e => e.restaurant.trim()))].filter(Boolean);
+  document.getElementById('restaurantList').innerHTML = restaurantNames.map(r => `<option value="${escapeHtml(r)}">`).join('');
+}
+
+function updateRatingUI() {
+  const rating = parseInt(document.getElementById('rating').value);
+  document.getElementById('ratingBadge').textContent = rating;
+  document.getElementById('ratingStars').textContent = ratingToStars(rating * 2);
+  const badge = document.getElementById('ratingBadge');
+  if (rating >= 8) badge.style.color = '#2ecc71';
+  else if (rating >= 6) badge.style.color = '#f4b740';
+  else if (rating >= 4) badge.style.color = '#e07b39';
+  else badge.style.color = '#d9534f';
+}
+
+function renderFilter() {
+  const restaurantNames = [...new Set(entries.map(e => e.restaurant.trim()))].filter(Boolean).sort();
+  const select = document.getElementById('filterRestaurant');
+  const currentVal = select.value;
+  select.innerHTML = '<option value="">🏪 All Restaurants</option>' +
+    restaurantNames.map(r => `<option value="${escapeHtml(r)}" ${r === currentVal ? 'selected' : ''}>${escapeHtml(r)}</option>`).join('');
+  select.value = currentVal;
+  document.getElementById('entryCount').textContent = `${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}`;
+}
+
+function renderEntries() {
+  let filtered = [...entries];
+  const filterRestaurant = document.getElementById('filterRestaurant').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  if (filterRestaurant) filtered = filtered.filter(e => e.restaurant.trim() === filterRestaurant);
+
+  switch (sortBy) {
+    case 'oldest': filtered.sort((a, b) => new Date(a.date) - new Date(b.date)); break;
+    case 'highest': filtered.sort((a, b) => b.rating - a.rating || new Date(b.date) - new Date(a.date)); break;
+    case 'lowest': filtered.sort((a, b) => a.rating - b.rating || new Date(b.date) - new Date(a.date)); break;
+    default: filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); break;
+  }
+
+  const container = document.getElementById('entryList');
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🍕</div>
+        <h3>No entries yet</h3>
+        <p>${accessToken ? 'Add your first restaurant visit above!' : 'Sign in with Google to get started!'}</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(e => {
+    const starsOutOf5 = ratingToStars(e.rating * 2);
+    // Build photo URLs - prefer Google Drive thumbnails, fall back to data URLs
+    const photoHTML = (e.photos && e.photos.length > 0) ? `
+      <div class="entry-photos">
+        ${e.photos.map((p, i) => {
+          const src = typeof p === 'string'
+            ? p // old base64 data URL
+            : (p.thumbnailLink || `https://lh3.googleusercontent.com/d/${p.fileId}=s200`);
+          return `<div class="photo-thumb" onclick="event.stopPropagation(); openLightbox('${src.replace('=s200','=s800')}')"><img src="${src}" alt="Food photo ${i+1}" loading="lazy"></div>`;
+        }).join('')}
+      </div>` : '';
+
+    return `
+      <div class="entry-card">
+        <div class="entry-actions">
+          <button class="btn btn-outline btn-sm" onclick="startEdit('${e.id}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDelete('${e.id}')">🗑️</button>
+        </div>
+        <div class="entry-header">
+          <div>
+            <div class="entry-restaurant">🍴 ${escapeHtml(e.restaurant)}</div>
+            <div class="entry-date">${formatDate(e.date)}</div>
+          </div>
+        </div>
+        <div class="entry-food">🍽️ ${escapeHtml(e.food)}</div>
+        <div class="entry-rating">
+          <span class="stars">${starsOutOf5}</span>
+          <span class="score">${e.rating}/10</span>
+        </div>
+        ${photoHTML}
+        ${e.notes ? `<div class="entry-notes">💬 ${escapeHtml(e.notes)}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// ── Actions ─────────────────────────────────────────────────
+document.getElementById('rating').addEventListener('input', updateRatingUI);
+
+document.getElementById('entryForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  if (!accessToken) {
+    showToast('Please sign in with Google first');
+    return;
+  }
+
+  const editId = document.getElementById('editId').value;
+  const entryData = {
+    restaurant: document.getElementById('restaurant').value.trim(),
+    date: document.getElementById('date').value,
+    food: document.getElementById('food').value.trim(),
+    rating: parseInt(document.getElementById('rating').value),
+    notes: document.getElementById('notes').value.trim(),
+  };
+
+  if (!entryData.restaurant || !entryData.date || !entryData.food) {
+    alert('Please fill in restaurant, date, and what you ordered.');
+    return;
+  }
+
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('submitBtn').textContent = '⏳ Saving...';
+
+  try {
+    const newPhotos = pendingPhotos;
+
+    if (editId) {
+      // Update existing - keep old photo refs that weren't replaced
+      const oldEntry = entries.find(e => e.id === editId);
+      const photoRefs = [...(oldEntry ? oldEntry.photos || [] : [])];
+
+      // Upload new photos to Drive
+      for (const p of newPhotos) {
+        if (!p.driveRef) {
+          const ref = await uploadPhotoToDrive(p.dataUrl, editId, photoRefs.length);
+          photoRefs.push({ fileId: ref.fileId, thumbnailLink: ref.thumbnailLink, webContentLink: ref.webContentLink });
+        }
+      }
+
+      const idx = entries.findIndex(e => e.id === editId);
+      if (idx !== -1) {
+        entries[idx] = { ...entries[idx], ...entryData, photos: photoRefs, updatedAt: new Date().toISOString() };
+      }
+    } else {
+      // New entry
+      const newId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const photoRefs = [];
+      for (let i = 0; i < newPhotos.length; i++) {
+        const ref = await uploadPhotoToDrive(newPhotos[i].dataUrl, newId, i);
+        photoRefs.push({ fileId: ref.fileId, thumbnailLink: ref.thumbnailLink, webContentLink: ref.webContentLink });
+      }
+      entries.push({ ...entryData, id: newId, photos: photoRefs, createdAt: new Date().toISOString() });
+    }
+
+    await saveToDrive();
+    renderAll();
+    renderForm(true);
+  } catch (err) {
+    console.error(err);
+    alert('Failed to save: ' + err.message);
+  } finally {
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitBtn').textContent = '💾 Save Entry';
+  }
+});
+
+document.getElementById('cancelEditBtn').addEventListener('click', () => renderForm(true));
+document.getElementById('filterRestaurant').addEventListener('change', renderEntries);
+document.getElementById('sortBy').addEventListener('change', renderEntries);
+
+document.getElementById('cameraBtn').addEventListener('click', toggleCamera);
+document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+document.getElementById('photoUpload').addEventListener('change', function() {
+  handleFileUpload(this.files);
+  this.value = '';
+});
+
+function startEdit(id) {
+  const entry = entries.find(e => e.id === id);
+  if (!entry) return;
+
+  document.getElementById('editId').value = entry.id;
+  document.getElementById('restaurant').value = entry.restaurant;
+  document.getElementById('date').value = entry.date;
+  document.getElementById('food').value = entry.food;
+  document.getElementById('rating').value = entry.rating;
+  document.getElementById('notes').value = entry.notes || '';
+  document.getElementById('submitBtn').textContent = '✏️ Update Entry';
+  document.getElementById('cancelEditBtn').style.display = 'inline-flex';
+  document.getElementById('formTitle').textContent = '✏️ Edit Entry';
+
+  // Restore photos
+  clearPhotos();
+  pendingPhotos = (entry.photos || []).map(p => {
+    if (typeof p === 'string') {
+      return { dataUrl: p, uploading: false, driveRef: null };
+    }
+    const src = p.thumbnailLink || `https://lh3.googleusercontent.com/d/${p.fileId}=s200`;
+    return { dataUrl: src, uploading: false, driveRef: p };
+  });
+  renderPhotoPreviews();
+  updateRatingUI();
+  document.getElementById('formCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function confirmDelete(id) {
+  if (!confirm('Delete this entry? This cannot be undone.')) return;
+
+  // Delete associated photos from Drive
+  const entry = entries.find(e => e.id === id);
+  if (entry && entry.photos) {
+    for (const p of entry.photos) {
+      if (p.fileId) await deletePhotoFromDrive(p.fileId);
+    }
+  }
+
+  entries = entries.filter(e => e.id !== id);
+  await saveToDrive();
+  renderAll();
+  renderForm(true);
+}
+
+// ── Client ID Management ────────────────────────────────────
+function saveClientId() {
+  const input = document.getElementById('clientIdInput').value.trim();
+  if (!input) { showToast('Please enter a Client ID'); return; }
+  if (!input.includes('.apps.googleusercontent.com')) {
+    showToast('That doesn\'t look like a valid Client ID');
+    return;
+  }
+  CLIENT_ID = input;
+  localStorage.setItem('food-diary-client-id', input);
+  showToast('Client ID saved! Sign in to continue.');
+  initGoogleAuth();
+}
+
+// ── Init ────────────────────────────────────────────────────
+document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+document.getElementById('originDisplay').textContent = window.location.origin;
+document.getElementById('clientIdInput').value = CLIENT_ID;
+
+// Client ID is hardcoded — hide setup banner
+document.getElementById('setupBanner').style.display = 'none';
+initGoogleAuth();
+updateAuthUI();
+renderAll();
+
+// Register service worker for offline PWA support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(err => {
+    console.warn('SW registration failed:', err);
+  });
+}
+</script>
+
+</body>
+</html>
