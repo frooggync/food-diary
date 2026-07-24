@@ -1097,7 +1097,7 @@ function saveClientId() {
 }
 
 // ── Maps / Nearby ───────────────────────────────────────────
-let MAPS_API_KEY = localStorage.getItem('food-diary-maps-key') || '';
+let MAPS_API_KEY = 'AIzaSyDqh0W_TlwewCB_yxdbgkrXzFDdgVRxJUE';
 
 function saveMapsKey() {
   const input = document.getElementById('mapsApiKeyInput').value.trim();
@@ -1200,10 +1200,9 @@ document.getElementById('date').value = new Date().toISOString().slice(0, 10);
 document.getElementById('originDisplay').textContent = window.location.origin;
 document.getElementById('clientIdInput').value = CLIENT_ID;
 
-// Client ID is hardcoded — hide setup banner
+// Client ID and Maps key are hardcoded — hide config banners
 document.getElementById('setupBanner').style.display = 'none';
-document.getElementById('mapsApiKeyInput').value = MAPS_API_KEY;
-if (MAPS_API_KEY) document.getElementById('mapsKeyRow').style.display = 'none';
+document.getElementById('mapsKeyRow').style.display = 'none';
 initGoogleAuth();
 updateAuthUI();
 renderAll();
