@@ -396,6 +396,8 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <!-- Google API loader -->
 <script src="https://apis.google.com/js/api.js"></script>
+<!-- Google Maps -->
+<script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:"AIzaSyDqh0W_TlwewCB_yxdbgkrXzFDdgVRxJUE",v:"weekly"});</script>
 
 <script>
 // ── Config ─────────────────────────────────────────────────
@@ -1112,16 +1114,8 @@ function findNearbyRestaurants() {
   const btn = document.getElementById('nearbyBtn');
   const results = document.getElementById('nearbyResults');
 
-  // If results are showing, hide them
   if (results.classList.contains('active')) {
     results.classList.remove('active');
-    return;
-  }
-
-  if (!MAPS_API_KEY) {
-    document.getElementById('mapsKeyRow').style.display = 'flex';
-    document.getElementById('mapsApiKeyInput').focus();
-    showToast('Enter your Google Maps API key first');
     return;
   }
 
@@ -1140,48 +1134,53 @@ function findNearbyRestaurants() {
       btn.textContent = '⏳ Searching...';
 
       try {
-        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=1500&type=restaurant&key=${MAPS_API_KEY}`;
-        const res = await fetch(url);
-        const data = await res.json();
+        // Load the Places library
+        await google.maps.importLibrary('places');
+        // PlacesService needs a map instance — create a hidden one
+        const dummyDiv = document.createElement('div');
+        const map = new google.maps.Map(dummyDiv, { center: { lat: latitude, lng: longitude }, zoom: 15 });
+        const service = new google.maps.places.PlacesService(map);
 
-        if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-          showToast('Maps API error: ' + data.status + ' — check your API key');
-          btn.textContent = '📍 Nearby';
-          btn.disabled = false;
-          return;
-        }
+        service.nearbySearch(
+          { location: { lat: latitude, lng: longitude }, radius: 1500, type: 'restaurant' },
+          (placeResults, status) => {
+            btn.textContent = '📍 Nearby';
+            btn.disabled = false;
 
-        const places = (data.results || []).slice(0, 12);
+            if (status !== google.maps.places.PlacesServiceStatus.OK && status !== 'ZERO_RESULTS') {
+              showToast('Maps API error: ' + status);
+              return;
+            }
 
-        if (places.length === 0) {
-          showToast('No restaurants found nearby');
-          btn.textContent = '📍 Nearby';
-          btn.disabled = false;
-          return;
-        }
+            const places = (placeResults || []).slice(0, 12);
+            if (places.length === 0) {
+              showToast('No restaurants found nearby');
+              return;
+            }
 
-        results.innerHTML = places.map(p => {
-          const rating = p.rating ? '⭐ ' + p.rating : '';
-          const vicinity = p.vicinity || '';
-          return `
-            <div class="nearby-result-item" onclick="selectNearbyRestaurant('${escapeHtml(p.name).replace(/'/g, "\\'")}', '${p.place_id}')">
-              <div>
-                <div class="name">🍴 ${escapeHtml(p.name)}</div>
-                <div class="detail">${escapeHtml(vicinity)}</div>
-              </div>
-              <div class="rating-star">${rating}</div>
-            </div>`;
-        }).join('');
-        results.classList.add('active');
+            results.innerHTML = places.map(p => {
+              const rating = p.rating ? '⭐ ' + p.rating : '';
+              const vicinity = p.vicinity || '';
+              return `
+                <div class="nearby-result-item" onclick="selectNearbyRestaurant('${escapeHtml(p.name).replace(/'/g, "\\'")}', '${p.place_id}')">
+                  <div>
+                    <div class="name">🍴 ${escapeHtml(p.name)}</div>
+                    <div class="detail">${escapeHtml(vicinity)}</div>
+                  </div>
+                  <div class="rating-star">${rating}</div>
+                </div>`;
+            }).join('');
+            results.classList.add('active');
+          }
+        );
       } catch (err) {
-        showToast('Network error finding restaurants');
+        showToast('Error: ' + err.message);
+        btn.textContent = '📍 Nearby';
+        btn.disabled = false;
       }
-
-      btn.textContent = '📍 Nearby';
-      btn.disabled = false;
     },
     (err) => {
-      showToast('Location access denied — can\'t search nearby');
+      showToast('Location access denied');
       btn.textContent = '📍 Nearby';
       btn.disabled = false;
     },
