@@ -52,7 +52,7 @@
     transition: box-shadow 0.15s;
   }
   .google-btn:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-  .google-btn img { width: 18px; height: 18px; }
+  .google-btn img { width: 24px; height: 24px; border-radius: 50%; }
 
   /* Setup banner */
   .setup-banner {
@@ -264,7 +264,7 @@
       <span id="authText">Not connected to Google Drive</span>
     </div>
     <button class="google-btn" id="googleSignInBtn" onclick="handleAuthClick()">
-      <img src="https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/googleg_color_18dp.png" alt="">
+      <img src="sign-in-icon.png" alt="">
       Sign in with Google
     </button>
   </div>
@@ -502,7 +502,7 @@ function updateAuthUI() {
   if (accessToken) {
     dot.className = 'dot connected';
     text.textContent = 'Connected to Google Drive';
-    btn.innerHTML = '<img src="https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/googleg_color_18dp.png" alt=""> Sign Out';
+    btn.innerHTML = '<img src="sign-in-icon.png" alt=""> Sign Out';
     btn.onclick = signOut;
   } else {
     dot.className = 'dot';
