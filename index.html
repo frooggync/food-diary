@@ -205,6 +205,41 @@
   }
   .toast.show { opacity: 1; }
 
+  /* Nearby restaurants */
+  .nearby-row { display: flex; gap: 8px; align-items: flex-end; }
+  .nearby-row .form-group { flex: 2; min-width: 200px; }
+  .nearby-btn {
+    padding: 10px 14px; border: 2px dashed var(--border); border-radius: 8px;
+    background: var(--bg); cursor: pointer; font-size: 0.85rem; font-weight: 600;
+    color: var(--text); white-space: nowrap; transition: all 0.15s;
+    display: flex; align-items: center; gap: 5px; margin-bottom: 14px;
+  }
+  .nearby-btn:hover { border-color: var(--accent); color: var(--accent); background: #fff; }
+  .nearby-btn:disabled { opacity: 0.5; cursor: wait; }
+  .nearby-results {
+    max-height: 200px; overflow-y: auto; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); margin-bottom: 14px; display: none;
+  }
+  .nearby-results.active { display: block; }
+  .nearby-result-item {
+    padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between;
+    align-items: center; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+    transition: background 0.1s;
+  }
+  .nearby-result-item:last-child { border-bottom: none; }
+  .nearby-result-item:hover { background: #fef7f0; }
+  .nearby-result-item .name { font-weight: 600; }
+  .nearby-result-item .detail { font-size: 0.75rem; color: var(--text-muted); }
+  .nearby-result-item .rating-star { color: var(--star); font-size: 0.8rem; }
+  .maps-key-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 4px;
+  }
+  .maps-key-row input {
+    flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 0.78rem; background: var(--bg);
+  }
+  .maps-key-row .btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+
   @media (max-width: 480px) {
     .container { padding: 12px 10px 40px; }
     .form-row { flex-direction: column; }
@@ -232,6 +267,11 @@
       <img src="https://www.gstatic.com/mobilesdk/160503_mobilesdk/logo/2x/googleg_color_18dp.png" alt="">
       Sign in with Google
     </button>
+  </div>
+  <div class="maps-key-row" id="mapsKeyRow" style="display:none;">
+    <span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">🗺️ Maps Key:</span>
+    <input type="text" id="mapsApiKeyInput" placeholder="Paste Google Maps API key">
+    <button class="btn btn-sm btn-outline" onclick="saveMapsKey()">Save</button>
   </div>
 
   <!-- Setup instructions (hidden once configured) -->
@@ -262,12 +302,17 @@
     <div class="card-title" id="formTitle">📝 Add New Entry</div>
     <form id="entryForm" autocomplete="off">
       <input type="hidden" id="editId" value="">
-      <div class="form-row">
-        <div class="form-group" style="flex:2; min-width:200px;">
+      <div class="form-row nearby-row">
+        <div class="form-group">
           <label for="restaurant">🍴 Restaurant</label>
           <input type="text" id="restaurant" placeholder="e.g. Joe's Pizza" list="restaurantList" required>
           <datalist id="restaurantList"></datalist>
         </div>
+        <button type="button" class="nearby-btn" id="nearbyBtn" onclick="findNearbyRestaurants()" title="Find restaurants near you">
+          📍 Nearby
+        </button>
+      </div>
+      <div class="nearby-results" id="nearbyResults"></div>
         <div class="form-group">
           <label for="date">📅 Date</label>
           <input type="date" id="date" required>
@@ -1051,6 +1096,105 @@ function saveClientId() {
   initGoogleAuth();
 }
 
+// ── Maps / Nearby ───────────────────────────────────────────
+let MAPS_API_KEY = localStorage.getItem('food-diary-maps-key') || '';
+
+function saveMapsKey() {
+  const input = document.getElementById('mapsApiKeyInput').value.trim();
+  if (!input) return;
+  MAPS_API_KEY = input;
+  localStorage.setItem('food-diary-maps-key', input);
+  showToast('Maps API key saved ✅');
+  document.getElementById('mapsKeyRow').style.display = 'none';
+}
+
+function findNearbyRestaurants() {
+  const btn = document.getElementById('nearbyBtn');
+  const results = document.getElementById('nearbyResults');
+
+  // If results are showing, hide them
+  if (results.classList.contains('active')) {
+    results.classList.remove('active');
+    return;
+  }
+
+  if (!MAPS_API_KEY) {
+    document.getElementById('mapsKeyRow').style.display = 'flex';
+    document.getElementById('mapsApiKeyInput').focus();
+    showToast('Enter your Google Maps API key first');
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    showToast('Geolocation not supported on this device');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Locating...';
+  results.classList.remove('active');
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { latitude, longitude } = pos.coords;
+      btn.textContent = '⏳ Searching...';
+
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=1500&type=restaurant&key=${MAPS_API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+          showToast('Maps API error: ' + data.status + ' — check your API key');
+          btn.textContent = '📍 Nearby';
+          btn.disabled = false;
+          return;
+        }
+
+        const places = (data.results || []).slice(0, 12);
+
+        if (places.length === 0) {
+          showToast('No restaurants found nearby');
+          btn.textContent = '📍 Nearby';
+          btn.disabled = false;
+          return;
+        }
+
+        results.innerHTML = places.map(p => {
+          const rating = p.rating ? '⭐ ' + p.rating : '';
+          const vicinity = p.vicinity || '';
+          return `
+            <div class="nearby-result-item" onclick="selectNearbyRestaurant('${escapeHtml(p.name).replace(/'/g, "\\'")}', '${p.place_id}')">
+              <div>
+                <div class="name">🍴 ${escapeHtml(p.name)}</div>
+                <div class="detail">${escapeHtml(vicinity)}</div>
+              </div>
+              <div class="rating-star">${rating}</div>
+            </div>`;
+        }).join('');
+        results.classList.add('active');
+      } catch (err) {
+        showToast('Network error finding restaurants');
+      }
+
+      btn.textContent = '📍 Nearby';
+      btn.disabled = false;
+    },
+    (err) => {
+      showToast('Location access denied — can\'t search nearby');
+      btn.textContent = '📍 Nearby';
+      btn.disabled = false;
+    },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+function selectNearbyRestaurant(name, placeId) {
+  document.getElementById('restaurant').value = name;
+  document.getElementById('nearbyResults').classList.remove('active');
+  showToast('Selected: ' + name);
+}
+
 // ── Init ────────────────────────────────────────────────────
 document.getElementById('date').value = new Date().toISOString().slice(0, 10);
 document.getElementById('originDisplay').textContent = window.location.origin;
@@ -1058,6 +1202,8 @@ document.getElementById('clientIdInput').value = CLIENT_ID;
 
 // Client ID is hardcoded — hide setup banner
 document.getElementById('setupBanner').style.display = 'none';
+document.getElementById('mapsApiKeyInput').value = MAPS_API_KEY;
+if (MAPS_API_KEY) document.getElementById('mapsKeyRow').style.display = 'none';
 initGoogleAuth();
 updateAuthUI();
 renderAll();
